@@ -1,0 +1,147 @@
+---
+title: "Update User Profile"
+description: "Update the authenticated user's profile information"
+---
+
+<Note>
+  This is a **protected route** that requires JWT authentication.
+</Note>
+
+## Endpoint
+
+```
+PATCH /user
+```
+
+## Authentication
+
+This endpoint requires a valid JWT token to be included in the request headers.
+
+### Authorization Header
+
+Include the JWT token in the `Authorization` header using the Bearer scheme:
+
+```
+Authorization: Bearer <your_jwt_token>
+```
+
+## Request
+
+### Request Body
+
+<ParamField body="handle" type="string" required>
+  The user's new handle. Must be unique across all users. The handle will be automatically slugified (converted to URL-friendly format). This field is required and cannot be empty.
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  The user's profile description or bio. This field is required and cannot be empty.
+</ParamField>
+
+<ParamField body="links" type="string">
+  JSON string containing the user's social links and URLs. Should be formatted as a JSON array of link objects.
+</ParamField>
+
+### Validation Rules
+
+- `handle`: Required, non-empty string. Will be slugified automatically.
+- `description`: Required, non-empty string.
+- `links`: Optional string field.
+
+### Request Example
+
+```json
+{
+  "handle": "john-doe-updated",
+  "description": "Senior full-stack developer specializing in Node.js and React",
+  "links": "[{\"title\":\"GitHub\",\"url\":\"https://github.com/johndoe\"},{\"title\":\"LinkedIn\",\"url\":\"https://linkedin.com/in/johndoe\"}]"
+}
+```
+
+## Response
+
+### Success Response (200 OK)
+
+Returns a success message when the user profile is updated successfully.
+
+```json
+{
+  "message": "User updated successfully"
+}
+```
+
+## Status Codes
+
+<ResponseField name="200" type="OK">
+  User profile updated successfully
+  
+  ```json
+  {
+    "message": "User updated successfully"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="401" type="Unauthorized">
+  Missing or invalid JWT token
+  
+  ```json
+  {
+    "message": "Unauthorized"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="409" type="Conflict">
+  The requested handle is already taken by another user
+  
+  ```json
+  {
+    "message": "Handle already exists"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="422" type="Unprocessable Entity">
+  Validation errors in request body
+  
+  ```json
+  {
+    "errors": [
+      {
+        "msg": "Handle is required",
+        "param": "handle",
+        "location": "body"
+      },
+      {
+        "msg": "Description is required",
+        "param": "description",
+        "location": "body"
+      }
+    ]
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="500" type="Internal Server Error">
+  Server error during update operation
+  
+  ```json
+  {
+    "message": "Internal server error"
+  }
+  ```
+</ResponseField>
+
+## Important Notes
+
+<Note>
+  The handle is automatically slugified, so "John Doe" will become "john-doe". This ensures handles are URL-friendly.
+</Note>
+
+<Note>
+  You can update your own handle, but if you try to use a handle that's already taken by another user, you'll receive a 409 Conflict error.
+</Note>
+
+<Note>
+  The authenticated user is identified from the JWT token, so you can only update your own profile.
+</Note>

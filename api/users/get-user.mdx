@@ -1,0 +1,119 @@
+---
+title: "Get Current User"
+description: "Retrieve the authenticated user's profile information"
+---
+
+<Note>
+  This is a **protected route** that requires JWT authentication.
+</Note>
+
+## Endpoint
+
+```
+GET /user
+```
+
+## Authentication
+
+This endpoint requires a valid JWT token to be included in the request headers.
+
+### Authorization Header
+
+Include the JWT token in the `Authorization` header using the Bearer scheme:
+
+```
+Authorization: Bearer <your_jwt_token>
+```
+
+## Request
+
+No request body or query parameters are required. The user information is extracted from the JWT token.
+
+## Response
+
+### Success Response (200 OK)
+
+Returns the authenticated user's profile information.
+
+<ResponseField name="handle" type="string" required>
+  The user's unique handle
+</ResponseField>
+
+<ResponseField name="username" type="string" required>
+  The user's display name
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  The user's email address
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The user's profile description (defaults to empty string)
+</ResponseField>
+
+<ResponseField name="imageUrl" type="string">
+  URL to the user's profile image (defaults to empty string)
+</ResponseField>
+
+<ResponseField name="links" type="string">
+  JSON string containing the user's links (defaults to "[]")
+</ResponseField>
+
+<ResponseField name="_id" type="string" required>
+  The user's unique MongoDB identifier
+</ResponseField>
+
+### Response Example
+
+```json
+{
+  "_id": "507f1f77bcf86cd799439011",
+  "handle": "johndoe",
+  "username": "John Doe",
+  "email": "john@example.com",
+  "description": "Full-stack developer",
+  "imageUrl": "https://res.cloudinary.com/...",
+  "links": "[{\"title\":\"GitHub\",\"url\":\"https://github.com/johndoe\"}]",
+  "__v": 0
+}
+```
+
+<Note>
+  The password field is excluded from the response for security reasons.
+</Note>
+
+## Status Codes
+
+<ResponseField name="200" type="OK">
+  User information retrieved successfully
+</ResponseField>
+
+<ResponseField name="401" type="Unauthorized">
+  Missing or invalid JWT token
+  
+  ```json
+  {
+    "message": "Unauthorized"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="404" type="Not Found">
+  User not found in database
+  
+  ```json
+  {
+    "message": "User not found"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="500" type="Internal Server Error">
+  Server error during token verification
+  
+  ```json
+  {
+    "message": "Internal server error"
+  }
+  ```
+</ResponseField>

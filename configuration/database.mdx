@@ -1,0 +1,136 @@
+---
+title: "Database Configuration"
+description: "MongoDB database setup and configuration for Dev-Tree"
+---
+
+## Overview
+
+Dev-Tree uses MongoDB as its database, accessed through Mongoose ODM (Object Data Modeling). The database configuration is centralized in `src/config/db.ts`.
+
+## Database Connection
+
+The application establishes a connection to MongoDB using the `connectDB` function:
+
+```typescript src/config/db.ts
+import mongoose from "mongoose";
+
+export const connectDB = async () => {
+    try {
+        const conection = await mongoose.connect(process.env.MONGO_URI as string);
+        const url = `${conection.connection.host}:${conection.connection.port}`;
+        console.log("MongoDB connected successfully");
+    } catch (error) {
+        console.error("MongoDB connection failed", error);
+        process.exit(1); // Exit the process with failure
+    }
+}
+```
+
+This function is called during application startup in `src/server.ts`:
+
+```typescript src/server.ts
+import { connectDB } from "./config/db";
+
+connectDB(); // Connect to MongoDB
+```
+
+## Connection String Format
+
+The MongoDB connection string is provided via the `MONGO_URI` environment variable. It supports both local and cloud-based MongoDB instances.
+
+### Local MongoDB
+
+```bash
+MONGO_URI=mongodb://localhost:27017/devtree
+```
+
+### MongoDB Atlas (Cloud)
+
+```bash
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/devtree?retryWrites=true&w=majority
+```
+
+<Info>
+  Replace `username`, `password`, and `cluster` with your actual MongoDB Atlas credentials.
+</Info>
+
+## Connection Error Handling
+
+The `connectDB` function includes comprehensive error handling:
+
+- **Success**: Logs a success message with the database host and port
+- **Failure**: Logs the error and exits the process with code 1
+
+<Warning>
+  If the database connection fails, the application will terminate immediately with `process.exit(1)`. Ensure your MongoDB instance is running and the connection string is correct before starting the server.
+</Warning>
+
+## Mongoose Integration
+
+The application uses Mongoose for:
+
+- Schema definition and validation
+- Model creation and management
+- Type-safe database operations
+- Built-in validation and middleware
+
+## Database Models
+
+Dev-Tree currently includes the following Mongoose models:
+
+### User Model
+
+The User model is defined in `src/models/User.ts` and includes:
+
+```typescript
+interface UserInterface {
+  handle: string;        // Unique user handle
+  username: string;      // Display name
+  email: string;         // User email (unique)
+  password: string;      // Hashed password
+  description: string;   // User bio/description
+  imageUrl?: string;     // Profile image URL (optional)
+  links: string;         // JSON string of user links
+}
+```
+
+**Schema Features:**
+- Unique constraints on `handle` and `email`
+- Email validation with regex pattern
+- Password minimum length of 6 characters
+- Automatic trimming of string fields
+- Default values for optional fields
+
+## Database Operations
+
+All database operations are performed using Mongoose models. Example operations:
+
+```typescript
+// Create a new user
+const user = await User.create({
+  handle: "john",
+  username: "John Doe",
+  email: "john@example.com",
+  password: "hashedPassword"
+});
+
+// Find a user
+const user = await User.findOne({ email: "john@example.com" });
+
+// Update a user
+await User.findByIdAndUpdate(userId, { username: "New Name" });
+
+// Delete a user
+await User.findByIdAndDelete(userId);
+```
+
+## Connection Best Practices
+
+<Tip>
+  Mongoose handles connection pooling automatically. You only need to call `connectDB()` once during application startup.
+</Tip>
+
+- The connection is established once at application startup
+- Mongoose maintains a connection pool for efficient query handling
+- Connection state is managed automatically
+- Failed queries will throw errors that should be handled in your routes/controllers

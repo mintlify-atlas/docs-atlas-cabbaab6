@@ -1,0 +1,183 @@
+---
+title: "Cloudinary Configuration"
+description: "Image storage and management with Cloudinary"
+---
+
+## Overview
+
+Dev-Tree uses Cloudinary as its cloud-based image storage solution. Cloudinary handles profile image uploads, storage, optimization, and delivery.
+
+## Cloudinary Setup
+
+The Cloudinary SDK is configured in `src/config/cloudinary.ts`:
+
+```typescript src/config/cloudinary.ts
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+export default cloudinary;
+```
+
+This configuration is imported and used throughout the application wherever image operations are needed.
+
+## Required Credentials
+
+<Warning>
+  Keep your Cloudinary API credentials secure. Never expose them in client-side code or commit them to version control.
+</Warning>
+
+Three environment variables are required for Cloudinary integration:
+
+### Cloud Name
+
+```bash
+CLOUD_NAME=your-cloud-name
+```
+
+Your unique Cloudinary cloud name. Found in your Cloudinary Dashboard under "Account Details".
+
+### API Key
+
+```bash
+CLOUDINARY_API_KEY=123456789012345
+```
+
+Your Cloudinary API key for authentication. Found in your Cloudinary Dashboard.
+
+### API Secret
+
+```bash
+CLOUDINARY_API_SECRET=your-api-secret-here
+```
+
+Your Cloudinary API secret. Keep this confidential as it provides full access to your Cloudinary account.
+
+## Getting Cloudinary Credentials
+
+1. Sign up for a free account at [cloudinary.com](https://cloudinary.com)
+2. Navigate to your Dashboard
+3. Find your credentials under "Account Details" or "API Keys"
+4. Copy the Cloud Name, API Key, and API Secret to your `.env` file
+
+<Info>
+  Cloudinary offers a generous free tier that's suitable for development and small-scale applications.
+</Info>
+
+## How Images Are Stored
+
+When users upload profile images:
+
+1. The image is sent from the frontend to the Dev-Tree API
+2. The API uploads the image to Cloudinary using the configured credentials
+3. Cloudinary stores the image and returns a secure URL
+4. The URL is saved in the user's `imageUrl` field in MongoDB
+5. The frontend displays images using the Cloudinary URL
+
+### Image Upload Example
+
+```typescript
+import cloudinary from "./config/cloudinary";
+
+// Upload image from a file buffer or base64 string
+const result = await cloudinary.uploader.upload(imageData, {
+  folder: "devtree/profiles",
+  public_id: `user-${userId}`,
+  overwrite: true,
+  transformation: [
+    { width: 500, height: 500, crop: "limit" },
+    { quality: "auto" }
+  ]
+});
+
+const imageUrl = result.secure_url;
+```
+
+## Folder Organization
+
+Images are typically organized in Cloudinary folders for better management:
+
+- **devtree/profiles**: User profile images
+- **devtree/covers**: Cover or banner images (if applicable)
+- **devtree/assets**: Other application assets
+
+Folder structure helps with:
+- Organizing assets by type
+- Applying folder-level transformations
+- Managing storage and cleanup
+- Generating usage reports
+
+## Image Transformations
+
+Cloudinary supports on-the-fly image transformations:
+
+```typescript
+// Resize and optimize on upload
+const result = await cloudinary.uploader.upload(imageData, {
+  transformation: [
+    { width: 500, height: 500, crop: "fill", gravity: "face" },
+    { quality: "auto", fetch_format: "auto" }
+  ]
+});
+```
+
+Common transformations:
+- **Resizing**: Ensure consistent dimensions
+- **Cropping**: Focus on faces or specific areas
+- **Quality optimization**: Automatic format and quality selection
+- **Format conversion**: Convert to WebP, AVIF, etc.
+
+## Security Best Practices
+
+<Warning>
+  Only perform upload operations from your backend server. Never expose API credentials to the frontend.
+</Warning>
+
+1. **Server-side uploads**: Always upload from your backend, never directly from the frontend
+2. **Credential protection**: Store credentials in environment variables only
+3. **Upload presets**: Use unsigned upload presets for client-side uploads if needed
+4. **Access control**: Configure upload permissions in your Cloudinary settings
+
+## Storage Management
+
+Monitor your Cloudinary usage:
+
+- Check your storage quota in the Cloudinary Dashboard
+- Set up automatic deletion of old or unused images
+- Use transformations to reduce file sizes
+- Enable auto-optimization features
+
+## Error Handling
+
+Handle Cloudinary errors gracefully:
+
+```typescript
+try {
+  const result = await cloudinary.uploader.upload(imageData);
+  return result.secure_url;
+} catch (error) {
+  console.error("Cloudinary upload failed:", error);
+  throw new Error("Failed to upload image");
+}
+```
+
+Common errors:
+- Invalid credentials (401)
+- File too large (413)
+- Invalid file type (400)
+- Rate limit exceeded (429)
+
+## Free Tier Limits
+
+Cloudinary's free tier includes:
+- 25 GB storage
+- 25 GB monthly bandwidth
+- 25,000 transformations per month
+
+<Tip>
+  Enable auto-optimization and use transformations efficiently to stay within free tier limits.
+</Tip>

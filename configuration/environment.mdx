@@ -1,0 +1,117 @@
+---
+title: "Environment Variables"
+description: "Configure your Dev-Tree backend with environment variables"
+---
+
+## Overview
+
+Dev-Tree uses environment variables to manage configuration settings across different environments. All sensitive configuration data like database credentials, API keys, and secrets are stored in environment variables.
+
+## Environment Setup
+
+The application loads environment variables using `dotenv` at startup. The configuration is loaded in `src/utils/loadEnv.ts`:
+
+```typescript
+import dotenv from "dotenv";
+dotenv.config();
+```
+
+This file is imported at the very beginning of `src/server.ts` to ensure all environment variables are available before any other modules are loaded.
+
+## Required Environment Variables
+
+<Warning>
+  Never commit your `.env` file to version control. Add it to `.gitignore` to prevent accidental exposure of sensitive credentials.
+</Warning>
+
+The following environment variables are required for the application to function properly:
+
+### Server Configuration
+
+<ParamField path="PORT" type="number" default="4000">
+  The port number on which the server will listen for incoming requests.
+</ParamField>
+
+### Database Configuration
+
+<ParamField path="MONGO_URI" type="string" required>
+  MongoDB connection string. Format: `mongodb://localhost:27017/devtree` or `mongodb+srv://username:password@cluster.mongodb.net/devtree`
+</ParamField>
+
+### Authentication
+
+<ParamField path="JWT_SECRET" type="string" required>
+  Secret key used for signing and verifying JWT tokens. Should be a long, random string for production environments.
+</ParamField>
+
+### CORS Configuration
+
+<ParamField path="FRONTEND_URL" type="string" required>
+  The URL of your frontend application. Used for CORS whitelisting. Example: `http://localhost:3000` or `https://yourdomain.com`
+</ParamField>
+
+### Cloudinary Configuration
+
+<ParamField path="CLOUD_NAME" type="string" required>
+  Your Cloudinary cloud name. Found in your Cloudinary dashboard.
+</ParamField>
+
+<ParamField path="CLOUDINARY_API_KEY" type="string" required>
+  Your Cloudinary API key for authentication.
+</ParamField>
+
+<ParamField path="CLOUDINARY_API_SECRET" type="string" required>
+  Your Cloudinary API secret for authentication.
+</ParamField>
+
+## .env File Setup
+
+Create a `.env` file in the root directory of your project with the following template:
+
+```bash
+# Server Configuration
+PORT=4000
+
+# Database
+MONGO_URI=mongodb://localhost:27017/devtree
+
+# Authentication
+JWT_SECRET=your-super-secret-jwt-key-here
+
+# Frontend CORS
+FRONTEND_URL=http://localhost:3000
+
+# Cloudinary
+CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+```
+
+## Environment-Specific Configuration
+
+### Development
+
+For local development, use localhost URLs and a local MongoDB instance:
+
+```bash
+MONGO_URI=mongodb://localhost:27017/devtree
+FRONTEND_URL=http://localhost:3000
+```
+
+### Production
+
+<Warning>
+  In production, use strong secrets and secure connection strings. Never use default or example values.
+</Warning>
+
+For production deployments:
+
+```bash
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/devtree?retryWrites=true&w=majority
+FRONTEND_URL=https://yourdomain.com
+JWT_SECRET=a-very-long-random-string-generated-securely
+```
+
+## Validation
+
+The application expects all required environment variables to be set. If any critical variables are missing, the application may fail to start or throw runtime errors when trying to access undefined configuration values.

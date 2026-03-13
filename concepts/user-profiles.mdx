@@ -1,0 +1,291 @@
+---
+title: 'User Profiles'
+description: 'Understanding the user profile system and handle management in Dev-Tree'
+---
+
+## Overview
+
+Dev-Tree uses a comprehensive user profile system built on MongoDB with Mongoose. Each user has a unique handle (like a username) that serves as their public identifier.
+
+## User Model Schema
+
+The user model defines the structure of user data:
+
+```typescript
+// src/models/User.ts
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface UserInterface extends Document {
+  handle: string;
+  username: string;
+  email: string;
+  password: string;
+  description: string;
+  imageUrl?: string;
+  links: string
+}
+
+const userSchema = new Schema({
+  handle: {
+    type: String,
+    required: true,
+    trim: true,
+    unique: true,
+  },
+  username: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    match: /.+\@.+\..+/,
+    trim: true,
+  },
+  password: {
+    type: String,
+    required: true,
+    minLength: 6,
+    trim: true,
+  },
+  description: {
+    type: String,
+    required: false,
+    default: "",
+    trim: true,
+  },
+  imageUrl: {
+    type: String,
+    required: false,
+    trim: true,
+    default: "",
+  },
+  links: {
+    type: String,
+    default: "[]"
+  }
+});
+```
+
+## User Fields
+
+### Required Fields
+
+<AccordionGroup>
+  <Accordion title="handle">
+    - **Type**: String
+    - **Unique**: Yes
+    - **Description**: URL-friendly identifier for the user
+    - **Example**: `john-doe`, `developer123`
+    - Automatically converted to slug format
+  </Accordion>
+
+  <Accordion title="username">
+    - **Type**: String
+    - **Description**: Display name for the user
+    - **Example**: `John Doe`, `Developer 123`
+    - Can contain spaces and special characters
+  </Accordion>
+
+  <Accordion title="email">
+    - **Type**: String
+    - **Unique**: Yes
+    - **Validation**: Email format (`.+\@.+\..+`)
+    - **Description**: User's email address for login
+  </Accordion>
+
+  <Accordion title="password">
+    - **Type**: String
+    - **Min Length**: 6 characters
+    - **Security**: Stored as bcrypt hash
+    - **Note**: Never returned in API responses
+  </Accordion>
+</AccordionGroup>
+
+### Optional Fields
+
+<AccordionGroup>
+  <Accordion title="description">
+    - **Type**: String
+    - **Default**: Empty string
+    - **Description**: User bio or profile description
+    - Can be updated by the user
+  </Accordion>
+
+  <Accordion title="imageUrl">
+    - **Type**: String (optional)
+    - **Default**: Empty string
+    - **Description**: Profile image URL from Cloudinary
+    - Set via the image upload endpoint
+  </Accordion>
+
+  <Accordion title="links">
+    - **Type**: String
+    - **Default**: `"[]"` (JSON string)
+    - **Description**: Array of social links stored as JSON string
+    - Can contain URLs to social profiles, websites, etc.
+  </Accordion>
+</AccordionGroup>
+
+## Handle System
+
+### What is a Handle?
+
+A handle is a unique, URL-friendly identifier for each user. It's similar to a Twitter handle or Instagram username.
+
+- Handles must be unique across all users
+- They are automatically converted to slug format (lowercase, hyphens instead of spaces)
+- Used in public profile URLs like `/api/:handle`
+
+### Handle Slug Generation
+
+Handles are converted to slug format using the `slug` package:
+
+```typescript
+// src/controllers/index.ts
+export const registerUser = async (req: Request, res: Response) => {
+  const slug = (await import("slug")).default;
+  
+  const handle = slug(req.body.handle);
+  const handleExists = await User.findOne({ handle });
+  
+  if (handleExists) {
+    res.status(409).json({ message: "Handle already exists" });
+    return;
+  }
+  
+  await User.create({ username, email, password: hash, handle });
+};
+```
+
+<Info>
+Example: If a user enters `"John Doe"` as their handle, it becomes `"john-doe"`
+</Info>
+
+### Checking Handle Availability
+
+Before registration or update, you can check if a handle is available:
+
+```typescript
+// src/controllers/index.ts
+export const searchHandle = async (req: Request, res: Response) => {
+  try {
+    const { handle } = req.body;
+    const userExists = await User.findOne({ handle });
+    
+    if (userExists) {
+      const error = new Error(`Handle already exists ${handle}`);
+      res.status(409).json({ message: error.message });
+      return;
+    }
+    
+    res.status(200).json({ message: "Handle is available" });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+```
+
+<Warning>
+Handles cannot be changed to an existing handle. The API returns a 409 Conflict error if the handle is taken.
+</Warning>
+
+## Profile Operations
+
+### Getting User by Handle
+
+Public profiles can be retrieved using the handle:
+
+```typescript
+// src/controllers/index.ts
+export const getUserByHandle = async (req: Request, res: Response) => {
+  try {
+    const { handle } = req.params;
+    const user = await User.findOne({ handle }).select("-password -email -__v -_id");
+    
+    if (!user) {
+      res.status(404).json({ message: "User not found", success: false, status: 404 });
+      return;
+    }
+    
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+```
+
+<Note>
+Sensitive fields like `password`, `email`, `_id`, and `__v` are excluded from public profile responses.
+</Note>
+
+### Updating User Profile
+
+Authenticated users can update their profile:
+
+```typescript
+// src/controllers/index.ts
+export const updateUser = async (req: Request, res: Response) => {
+  const slug = (await import("slug")).default;
+  
+  try {
+    const { description, links } = req.body;
+    const handle = slug(req.body.handle);
+    
+    // Check if new handle is taken by another user
+    const handleExists = await User.findOne({ handle });
+    if (handleExists && handleExists.email !== req.user.email) {
+      res.status(409).json({ message: "Handle already exists" });
+      return;
+    }
+
+    req.user.description = description;
+    req.user.handle = handle;
+    req.user.links = links;
+    req.user.save();
+    
+    res.status(200).json({ message: "User updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+```
+
+### Update Validation
+
+The update logic includes important validation:
+
+1. **Handle uniqueness**: Checks if the new handle is already taken
+2. **Self-update allowed**: Users can keep their current handle
+3. **Email comparison**: Uses email to verify if the handle belongs to the current user
+
+## Links Management
+
+The `links` field stores social media and website URLs as a JSON string:
+
+```typescript
+// Default value
+links: {
+  type: String,
+  default: "[]"
+}
+```
+
+<Info>
+Links are stored as a JSON string (e.g., `"[\"https://github.com/user\", \"https://twitter.com/user\"]"`) and should be parsed when displaying to users.
+</Info>
+
+## Getting Current User
+
+Authenticated users can retrieve their own full profile:
+
+```typescript
+// src/controllers/index.ts
+export const getUser = async (req: Request, res: Response) => {
+  res.status(200).json(req.user);
+};
+```
+
+This endpoint returns the user object attached by the authentication middleware, excluding the password field (filtered by middleware at src/middlewares/auth.ts:31).

@@ -1,0 +1,107 @@
+---
+title: "Search Handle Availability"
+description: "Check if a handle is available for registration"
+---
+
+<Note>
+  This is a **public route** that does not require authentication.
+</Note>
+
+## Endpoint
+
+```
+POST /search
+```
+
+## Request
+
+### Request Body
+
+<ParamField body="handle" type="string" required>
+  The handle to check for availability. This field is required and cannot be empty.
+</ParamField>
+
+### Request Example
+
+```json
+{
+  "handle": "johndoe"
+}
+```
+
+## Response
+
+### Handle Available (200 OK)
+
+Returns a success message when the handle is available for use.
+
+```json
+{
+  "message": "Handle is available"
+}
+```
+
+### Handle Already Exists (409 Conflict)
+
+Returns an error message when the handle is already taken by another user.
+
+```json
+{
+  "message": "Handle already exists johndoe"
+}
+```
+
+## Status Codes
+
+<ResponseField name="200" type="OK">
+  Handle is available for registration
+  
+  ```json
+  {
+    "message": "Handle is available"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="409" type="Conflict">
+  Handle already exists in the database
+  
+  ```json
+  {
+    "message": "Handle already exists johndoe"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="422" type="Unprocessable Entity">
+  Validation error - handle field is missing or empty
+  
+  ```json
+  {
+    "errors": [
+      {
+        "msg": "Handle is required",
+        "param": "handle",
+        "location": "body"
+      }
+    ]
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="500" type="Internal Server Error">
+  Server error during database query
+  
+  ```json
+  {
+    "message": "Internal server error"
+  }
+  ```
+</ResponseField>
+
+## Use Cases
+
+This endpoint is commonly used during user registration to:
+- Validate handle availability in real-time
+- Provide instant feedback to users when choosing a handle
+- Prevent duplicate handle registration attempts

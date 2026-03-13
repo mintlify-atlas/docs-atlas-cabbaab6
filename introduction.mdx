@@ -1,0 +1,136 @@
+---
+title: Introduction
+description: Learn about the Dev-Tree backend API - an Express + TypeScript REST API for managing developer profiles with custom handles
+---
+
+## What is Dev-Tree Backend?
+
+Dev-Tree is a modern REST API built with Express and TypeScript that enables developers to create and manage personalized profile pages with unique handles. Think of it as a link-in-bio service specifically designed for developers, where each user gets a custom handle (e.g., `/yourhandle`) to share their profile, links, and information.
+
+The API provides a complete backend solution for user authentication, profile management, image uploads, and handle-based routing.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="JWT Authentication" icon="lock">
+    Secure user registration and login with JSON Web Tokens and bcrypt password hashing
+  </Card>
+  
+  <Card title="Unique Handle System" icon="at">
+    Each user gets a unique, URL-friendly handle for their profile page with slug generation
+  </Card>
+  
+  <Card title="Image Uploads" icon="image">
+    Cloudinary integration for profile image uploads with automatic optimization
+  </Card>
+  
+  <Card title="Profile Management" icon="user">
+    Update user profiles including description, handle, and custom links
+  </Card>
+</CardGroup>
+
+## Technology Stack
+
+Dev-Tree backend is built with modern, production-ready technologies:
+
+- **Express 5.x** - Fast, minimalist web framework for Node.js
+- **TypeScript 5.x** - Type-safe JavaScript for better developer experience
+- **MongoDB + Mongoose 8.x** - NoSQL database with elegant object modeling
+- **Cloudinary 2.x** - Cloud-based image storage and optimization
+- **JWT (jsonwebtoken)** - Secure authentication tokens
+- **bcrypt 6.x** - Industry-standard password hashing
+- **express-validator** - Request validation middleware
+- **formidable** - Multipart form data parsing for file uploads
+
+## Architecture Overview
+
+The Dev-Tree backend follows a clean, modular architecture:
+
+```
+src/
+├── config/          # Database, Cloudinary, and CORS configuration
+├── controllers/     # Request handlers and business logic
+├── middlewares/     # Authentication and validation middleware
+├── models/          # Mongoose schemas and models
+├── utils/           # Helper functions (auth, JWT, env loading)
+├── router.ts        # API route definitions
+├── server.ts        # Express app configuration
+└── index.ts         # Application entry point
+```
+
+### Core Components
+
+**Server Setup** (`src/server.ts:1-18`)
+
+The Express application is configured with CORS, JSON parsing, and MongoDB connection:
+
+```typescript
+import express from "express";
+import cors from "cors";
+import router from "./router";
+import { connectDB } from "./config/db";
+import { corsConfig } from "./config/cors";
+
+export const app = express();
+
+app.use(cors(corsConfig));
+connectDB(); // Connect to MongoDB
+
+app.use(express.json());
+app.use("/", router);
+```
+
+**User Model** (`src/models/User.ts:13-54`)
+
+Users are stored with unique handles and emails:
+
+```typescript
+const userSchema = new Schema({
+  handle: {
+    type: String,
+    required: true,
+    trim: true,
+    unique: true,
+  },
+  username: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    match: /.+\@.+\..+/,
+  },
+  password: {
+    type: String,
+    required: true,
+    minLength: 6,
+  },
+  description: {
+    type: String,
+    default: "",
+  },
+  imageUrl: {
+    type: String,
+    default: "",
+  },
+  links: {
+    type: String,
+    default: "[]"
+  }
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get the API running locally in minutes
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api-reference">
+    Explore all available endpoints
+  </Card>
+</CardGroup>

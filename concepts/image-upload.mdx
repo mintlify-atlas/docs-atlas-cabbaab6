@@ -1,0 +1,255 @@
+---
+title: 'Image Upload'
+description: 'Learn how profile image uploads work with Cloudinary integration'
+---
+
+## Overview
+
+Dev-Tree uses Cloudinary for cloud-based image storage and management. Images are uploaded by authenticated users and stored with unique identifiers, then the secure URL is saved to the user's profile.
+
+## Cloudinary Configuration
+
+Cloudinary is configured using environment variables:
+
+```typescript
+// src/config/cloudinary.ts
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+export default cloudinary;
+```
+
+<Note>
+You need to set up these environment variables in your `.env` file:
+- `CLOUD_NAME`: Your Cloudinary cloud name
+- `CLOUDINARY_API_KEY`: Your API key from Cloudinary dashboard
+- `CLOUDINARY_API_SECRET`: Your API secret from Cloudinary dashboard
+</Note>
+
+## Image Upload Flow
+
+The image upload process involves three main steps:
+
+1. **File Parsing**: Formidable parses the multipart form data
+2. **Cloud Upload**: Image is uploaded to Cloudinary
+3. **URL Storage**: The secure URL is saved to the user's profile
+
+### Complete Upload Implementation
+
+```typescript
+// src/controllers/index.ts
+import formidable from "formidable";
+import { v4 as uuid } from "uuid";
+import cloudinary from "../config/cloudinary";
+
+export const uploadImage = async (req: Request, res: Response) => {
+  const form = formidable({ multiples: false });
+
+  try {
+    form.parse(req, (err, fields, files) => {
+      console.log(files.file[0].filepath);
+
+      cloudinary.uploader.upload(
+        files.file[0].filepath,
+        {
+          folder: "dev-tree",
+          public_id: uuid(),
+        },
+        async function (error, result) {
+          if (error) {
+            const newError = new Error("Subida de imagen fallida");
+            res.status(500).json({ message: "Internal server error" });
+          }
+          if (result) {
+            req.user.imageUrl = result.secure_url;
+            await req.user.save();
+            res.status(200).json({
+              imageUrl: result.secure_url,
+              message: "Image uploaded successfully",
+            });
+          }
+        }
+      );
+    });
+  } catch (error) {
+    new Error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+```
+
+## File Parsing with Formidable
+
+Formidable handles multipart/form-data file uploads:
+
+```typescript
+const form = formidable({ multiples: false });
+```
+
+<Info>
+`multiples: false` means only single file uploads are allowed. Users can upload one profile image at a time.
+</Info>
+
+### File Field Structure
+
+When parsing the form:
+
+```typescript
+form.parse(req, (err, fields, files) => {
+  // files.file[0].filepath contains the temporary file path
+  console.log(files.file[0].filepath);
+});
+```
+
+- `files.file` is an array containing uploaded file(s)
+- `files.file[0].filepath` is the temporary location where formidable stored the file
+
+## Cloudinary Upload Options
+
+Images are uploaded to Cloudinary with specific options:
+
+```typescript
+cloudinary.uploader.upload(
+  files.file[0].filepath,
+  {
+    folder: "dev-tree",
+    public_id: uuid(),
+  },
+  async function (error, result) {
+    // Upload callback
+  }
+);
+```
+
+### Upload Parameters
+
+<AccordionGroup>
+  <Accordion title="folder">
+    - **Value**: `"dev-tree"`
+    - **Purpose**: Organizes images in a dedicated folder on Cloudinary
+    - All profile images are stored under the `dev-tree` folder
+  </Accordion>
+
+  <Accordion title="public_id">
+    - **Value**: UUID generated with `uuid()` package
+    - **Purpose**: Creates a unique identifier for each image
+    - **Example**: `550e8400-e29b-41d4-a716-446655440000`
+    - Prevents filename conflicts and ensures uniqueness
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+Using UUID as the public_id means the original filename is not preserved. This is intentional for security and uniqueness.
+</Warning>
+
+## Image Storage and URLs
+
+After successful upload, Cloudinary returns a result object:
+
+```typescript
+if (result) {
+  req.user.imageUrl = result.secure_url;
+  await req.user.save();
+  res.status(200).json({
+    imageUrl: result.secure_url,
+    message: "Image uploaded successfully",
+  });
+}
+```
+
+### Secure URL
+
+- `result.secure_url` contains the HTTPS URL to the uploaded image
+- Format: `https://res.cloudinary.com/{cloud_name}/image/upload/{folder}/{public_id}.{format}`
+- This URL is permanently stored in the user's `imageUrl` field
+
+## Integration with User Profiles
+
+The upload endpoint automatically updates the authenticated user's profile:
+
+1. **Authentication Required**: Only authenticated users can upload (via `req.user`)
+2. **Automatic Profile Update**: The `imageUrl` field is updated immediately
+3. **Persistent Storage**: Changes are saved to the database with `req.user.save()`
+
+### User Model Integration
+
+The `imageUrl` field in the User model:
+
+```typescript
+// src/models/User.ts
+imageUrl: {
+  type: String,
+  required: false,
+  trim: true,
+  default: "",
+}
+```
+
+<Note>
+If a user uploads a new image, it replaces the previous `imageUrl`. The old image remains on Cloudinary but is no longer referenced.
+</Note>
+
+## Error Handling
+
+The upload function handles two types of errors:
+
+### Cloudinary Upload Errors
+
+```typescript
+if (error) {
+  const newError = new Error("Subida de imagen fallida");
+  res.status(500).json({ message: "Internal server error" });
+}
+```
+
+Occurs when:
+- Network issues prevent upload to Cloudinary
+- Invalid Cloudinary credentials
+- File format not supported
+
+### General Parsing Errors
+
+```typescript
+try {
+  form.parse(req, (err, fields, files) => {
+    // ...
+  });
+} catch (error) {
+  new Error(error);
+  res.status(500).json({ message: "Internal server error" });
+}
+```
+
+Occurs when:
+- Invalid form data
+- File too large
+- Malformed request
+
+## Usage Example
+
+To upload a profile image, send a POST request with multipart/form-data:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <your-token>" \
+  -F "file=@/path/to/image.jpg" \
+  https://api.example.com/api/user/image
+```
+
+Successful response:
+
+```json
+{
+  "imageUrl": "https://res.cloudinary.com/your-cloud/image/upload/dev-tree/550e8400-e29b-41d4-a716-446655440000.jpg",
+  "message": "Image uploaded successfully"
+}
+```
+
+<Info>
+The returned `imageUrl` can be used directly in `<img>` tags or API responses. Cloudinary automatically optimizes and serves the image.
+</Info>

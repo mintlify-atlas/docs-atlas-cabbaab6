@@ -1,0 +1,161 @@
+---
+title: "CORS Configuration"
+description: "Cross-Origin Resource Sharing setup for Dev-Tree API"
+---
+
+## Overview
+
+Dev-Tree implements CORS (Cross-Origin Resource Sharing) to control which frontend applications can access the API. The CORS configuration is defined in `src/config/cors.ts` and applied globally to all API routes.
+
+## CORS Configuration
+
+The CORS setup uses a whitelist-based approach to allow specific origins:
+
+```typescript src/config/cors.ts
+import { CorsOptions } from "cors";
+
+export const corsConfig: CorsOptions = {
+    origin: function(origin, callback) {
+        const whitelist = [process.env.FRONTEND_URL]
+
+        if(process.argv.includes("--api")) {
+            whitelist.push(undefined)
+        }
+        
+        if(whitelist.includes(origin)) {
+            callback(null, true)
+        } else {
+            callback(new Error("Error de CORS"))
+        }
+    } 
+}
+```
+
+This configuration is applied in the main server file:
+
+```typescript src/server.ts
+import cors from "cors";
+import { corsConfig } from "./config/cors";
+
+app.use(cors(corsConfig));
+```
+
+## Allowed Origins
+
+The CORS whitelist is dynamically configured based on:
+
+### Frontend URL
+
+The primary allowed origin is specified via the `FRONTEND_URL` environment variable:
+
+```bash
+FRONTEND_URL=http://localhost:3000
+```
+
+This allows requests from your frontend application.
+
+### API Mode
+
+When the application is started with the `--api` flag, `undefined` origins are also allowed:
+
+```bash
+node server.js --api
+```
+
+This permits requests from:
+- Command-line tools (curl, Postman, etc.)
+- Server-to-server requests
+- Native mobile applications
+
+<Info>
+  The `--api` flag is useful for development and testing with API clients that don't send an `Origin` header.
+</Info>
+
+## CORS Options Explained
+
+### Origin Function
+
+The `origin` option uses a function to dynamically validate incoming requests:
+
+```typescript
+origin: function(origin, callback) {
+    // origin: The Origin header from the request
+    // callback: Function to call with (error, allow)
+}
+```
+
+- **Allowed origins**: `callback(null, true)` - Request is permitted
+- **Blocked origins**: `callback(new Error("Error de CORS"))` - Request is rejected
+
+## Security Considerations
+
+<Warning>
+  Always use specific URLs in production. Never use `*` or overly permissive CORS settings in production environments.
+</Warning>
+
+### Production Best Practices
+
+1. **Specific Origins**: Only whitelist your actual frontend domain
+   ```bash
+   FRONTEND_URL=https://yourdomain.com
+   ```
+
+2. **Remove API Mode**: Don't use the `--api` flag in production unless absolutely necessary
+
+3. **Multiple Origins**: If you need to allow multiple origins, extend the whitelist:
+   ```typescript
+   const whitelist = [
+       process.env.FRONTEND_URL,
+       process.env.ADMIN_URL
+   ]
+   ```
+
+### Development Best Practices
+
+1. **Localhost URLs**: Use your development server URL
+   ```bash
+   FRONTEND_URL=http://localhost:3000
+   ```
+
+2. **API Testing**: Use the `--api` flag for testing with tools like Postman or curl
+
+## Error Handling
+
+When a request from a non-whitelisted origin is received:
+
+- The CORS middleware blocks the request
+- Returns an error: "Error de CORS"
+- The browser prevents the frontend from accessing the response
+
+## Testing CORS
+
+You can test CORS configuration using curl:
+
+```bash
+# Should succeed (if localhost:3000 is whitelisted)
+curl -H "Origin: http://localhost:3000" \
+     -H "Access-Control-Request-Method: POST" \
+     -X OPTIONS http://localhost:4000/api/endpoint
+
+# Should fail (origin not whitelisted)
+curl -H "Origin: http://malicious-site.com" \
+     -H "Access-Control-Request-Method: POST" \
+     -X OPTIONS http://localhost:4000/api/endpoint
+```
+
+## Common Issues
+
+### CORS Error in Browser
+
+If you see CORS errors in your browser console:
+
+1. Verify `FRONTEND_URL` matches your frontend's actual URL (including protocol and port)
+2. Check that the frontend is making requests to the correct API URL
+3. Ensure the CORS middleware is applied before route handlers
+
+### API Client Requests Blocked
+
+If tools like Postman or curl are blocked:
+
+- Start the server with the `--api` flag
+- Or add `undefined` to the whitelist for development

@@ -1,0 +1,100 @@
+---
+title: "Get User by Handle"
+description: "Retrieve a user's public profile information by their handle"
+---
+
+<Note>
+  This is a **public route** that does not require authentication.
+</Note>
+
+## Endpoint
+
+```
+GET /:handle
+```
+
+## Path Parameters
+
+<ParamField path="handle" type="string" required>
+  The unique handle of the user to retrieve
+</ParamField>
+
+## Request Example
+
+```bash
+GET /johndoe
+```
+
+## Response
+
+### Success Response (200 OK)
+
+Returns the user's public profile information. Sensitive fields are excluded for privacy.
+
+<ResponseField name="handle" type="string" required>
+  The user's unique handle
+</ResponseField>
+
+<ResponseField name="username" type="string" required>
+  The user's display name
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The user's profile description
+</ResponseField>
+
+<ResponseField name="imageUrl" type="string">
+  URL to the user's profile image
+</ResponseField>
+
+<ResponseField name="links" type="string">
+  JSON string containing the user's links
+</ResponseField>
+
+<Note>
+  The following fields are **excluded** from the response for privacy and security:
+  - `password`
+  - `email`
+  - `__v` (MongoDB version key)
+  - `_id` (MongoDB identifier)
+</Note>
+
+### Response Example
+
+```json
+{
+  "handle": "johndoe",
+  "username": "John Doe",
+  "description": "Full-stack developer passionate about building amazing products",
+  "imageUrl": "https://res.cloudinary.com/dev-tree/image/upload/v1234567890/profile.jpg",
+  "links": "[{\"title\":\"GitHub\",\"url\":\"https://github.com/johndoe\"},{\"title\":\"Twitter\",\"url\":\"https://twitter.com/johndoe\"}]"
+}
+```
+
+## Status Codes
+
+<ResponseField name="200" type="OK">
+  User found and returned successfully
+</ResponseField>
+
+<ResponseField name="404" type="Not Found">
+  User with the specified handle does not exist
+  
+  ```json
+  {
+    "message": "User not found",
+    "success": false,
+    "status": 404
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="500" type="Internal Server Error">
+  Server error during database query
+  
+  ```json
+  {
+    "message": "Internal server error"
+  }
+  ```
+</ResponseField>
