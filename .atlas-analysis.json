@@ -1,0 +1,65 @@
+{
+  "projectType": "api-service",
+  "projectName": "Dev-Tree",
+  "projectDescription": "Express and TypeScript backend API for managing user profiles with authentication and image uploads",
+  "theme": "palm",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": ["concepts/authentication", "concepts/user-profiles", "concepts/image-upload"]
+          },
+          {
+            "group": "Configuration",
+            "pages": ["configuration/environment", "configuration/database", "configuration/cors", "configuration/cloudinary"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": ["api/auth/register", "api/auth/login"]
+          },
+          {
+            "group": "Users",
+            "pages": ["api/users/get-user", "api/users/get-by-handle", "api/users/search-handle", "api/users/update-user"]
+          },
+          {
+            "group": "Images",
+            "pages": ["api/images/upload"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "JWT-based authentication",
+    "User registration and login",
+    "User profile management with custom handles",
+    "Image upload via Cloudinary",
+    "MongoDB database integration",
+    "Request validation with express-validator",
+    "CORS configuration"
+  ],
+  "publicApiSurface": [
+    "POST /auth/register",
+    "POST /auth/login",
+    "GET /user",
+    "GET /:handle",
+    "POST /search",
+    "PATCH /user",
+    "POST /user/image"
+  ]
+}
